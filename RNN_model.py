@@ -7,6 +7,7 @@ from tensorflow.keras.optimizers import Adam
 # Define the RNN model with LSTM
 def build_lstm_model(input_shape):
     model = Sequential()
+    # also look at GRU
     model.add(LSTM(50, return_sequences=True, input_shape=input_shape, recurrent_dropout=0.1))
     model.add(LSTM(50, return_sequences=False, recurrent_dropout=0.1))
     model.add(Dropout(0.2))
