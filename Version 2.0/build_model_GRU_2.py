@@ -9,6 +9,19 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 from sklearn.metrics import mean_squared_error
 
+import tensorflow as tf
+
+
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+
+policy = mixed_precision.Policy('mixed_float16')
+mixed_precision.set_policy(policy)
+
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+
 
 # gather datasets for each ticker defined
 from PrepareOptionsData import produceXYDataSets
@@ -116,7 +129,7 @@ y_test = y_train_all[-test_size:]
 
 
 # Build the model
-from RNN_model_GRU import build_gru_model
+from RNN_model_GRU_2 import build_gru_model
 
 from sklearn.impute import SimpleImputer
 
@@ -151,3 +164,360 @@ predictions = model.predict(x_test)
 model.save(model_name+'_model.h5')
 
 print(f"Test Loss: {test_loss}")
+
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+
+# Evaluate the model's performance
+mse = mean_squared_error(y_test, predictions)
+mae = mean_absolute_error(y_test, predictions)
+print(f"Mean Squared Error on Test Set: {mse}")
+print(f"Mean Absolute Error on Test Set: {mae}")
+
+
+# Function to calculate Mean Absolute Percentage Error
+def mean_absolute_percentage_error(y_true, y_pred): 
+    bid_true = y_true[:][0]
+    ask_true = y_true[:][1]
+    
+    bid_pred = y_pred[:][0]
+    ask_pred = y_pred[:][1]
+    
+    bid_error = np.mean(np.abs((bid_true-bid_pred)/bid_true))*100
+    ask_error = np.mean(np.abs((ask_true-ask_pred)/ask_true))*100
+    
+    
+    return [bid_error, ask_error]
+
+
+mape = mean_absolute_percentage_error(y_test, predictions)
+print("\nBid error,        Ask Error")
+print(mape)
+
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:, 0], label='Actual Bid', color='blue')
+plt.plot(predictions[:, 0], label='Predicted Bid', color='red', linestyle='--')
+#plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+#plt.plot(predictions[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Bid Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+# Assuming y_test and predictions are 2D arrays with shape [samples, 2] (for bid and ask prices)
+actual_bid_prices = y_test[:, 0]
+predicted_bid_prices = predictions[:, 0]
+
+# Calculate absolute percentage error for bids, avoiding divide by zero
+absolute_error_bid = np.abs(actual_bid_prices - predicted_bid_prices)
+absolute_error_bid_percent = np.where(actual_bid_prices != 0, (absolute_error_bid / actual_bid_prices) * 100, 0)
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 500, 100)
+
+# Plot a histogram of the absolute percentage errors within the specified range
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_bid_percent, bins=bins, edgecolor='k', color='blue', alpha=0.7)
+plt.title('Distribution of Percentage Error for Bid Prices')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+
+# Plot a bar graph of the absolute errors for each sample
+plt.figure(figsize=(12, 6))
+plt.plot(absolute_error_bid, color='blue', alpha=0.7)
+plt.title('Absolute Error for Bid Prices (Sample-wise)')
+plt.xlabel('Sample Index')
+plt.ylabel('Absolute Error')
+plt.grid(True)
+plt.show()
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+plt.plot(predictions[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Ask Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+# Assuming y_test and predictions are 2D arrays with shape [samples, 2] (for bid and ask prices)
+actual_ask_prices = y_test[:, 1]
+predicted_ask_prices = predictions[:, 1]
+
+# Calculate absolute percentage error for bids, avoiding divide by zero
+absolute_error_ask = np.abs(actual_ask_prices - predicted_ask_prices)
+absolute_error_ask_percent = np.where(actual_ask_prices != 0, (absolute_error_ask / actual_ask_prices) * 100, 0)
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 500, 100)
+
+# Plot a histogram of the absolute percentage errors for asks
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_ask_percent, bins=bins, edgecolor='k', color='green', alpha=0.7)
+plt.title('Histogram of Absolute Percentage Error for Ask Prices')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+# Plot a bar graph of the absolute errors for each sample
+plt.figure(figsize=(12, 6))
+plt.plot(absolute_error_ask, color='green', alpha=0.7)
+plt.title('Absolute Error for Ask Prices (Sample-wise)')
+plt.xlabel('Sample Index')
+plt.ylabel('Absolute Error')
+plt.grid(True)
+plt.show()
+
+
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+#plt.plot(y_test[-100:, 0], label='Actual Bid', color='blue')
+#plt.plot(predictions[-100:, 0], label='Predicted Bid', color='red', linestyle='--')
+plt.plot(y_test[-100:, 1], label='Actual Ask', color='green')
+plt.plot(predictions[-100:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Ask Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[-100:, 0], label='Actual Bid', color='blue')
+plt.plot(predictions[-100:, 0], label='Predicted Bid', color='red', linestyle='--')
+#plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+#plt.plot(predictions[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Bid Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:10, 0], label='Actual Bid', color='blue')
+plt.plot(predictions[:10, 0], label='Predicted Bid', color='red', linestyle='--')
+#plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+#plt.plot(predictions[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Bid Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+#plt.plot(y_test[:10, 0], label='Actual Bid', color='blue')
+#plt.plot(predictions[:10, 0], label='Predicted Bid', color='red', linestyle='--')
+plt.plot(y_test[:10, 1], label='Actual Ask', color='green')
+plt.plot(predictions[:10, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Bid Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+
+# Preprocess the new ticker's data
+new_ticker = 'AMZN'  # Replace with the new ticker symbol
+x_test, y_test = produceXYDataSets(new_ticker, "C", 20)
+
+# Scale the test data using the same scalers as the training data
+# Assuming min_max_scaler_stockdata and min_max_scaler_data are already fitted with training data
+x_test_data = x_test[:,:5]
+x_test_stockdata = x_test[:,5:]
+x_test_stockdata_scaled = min_max_scaler_stockdata.transform(x_test_stockdata)
+x_test_data_scaled = min_max_scaler_data.transform(x_test_data)
+
+# Prepare the data for LSTM (reshape if necessary)
+x_test_lstm = np.concatenate((np.expand_dims(x_test_stockdata_scaled, axis=2), np.repeat(np.expand_dims(x_test_data_scaled, 1), x_test_stockdata_scaled.shape[1], axis=1)), axis=2)
+
+# Make predictions
+predictions_test = model.predict(x_test_lstm)
+
+# Inverse transform the predictions
+predictions_test_original = predictions_test
+
+# Compare predictions with actual values
+# ... (You can use a similar plotting function as before to visualize the results)
+
+# Example: Plotting the results
+import matplotlib.pyplot as plt
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:, 0], label='Real Bid', color='blue')
+plt.plot(predictions_test_original[:, 0], label='Predicted Bid', color='red', linestyle='--')
+plt.plot(y_test[:, 1], label='Real Ask', color='green')
+plt.plot(predictions_test_original[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title(f'Real vs Predicted Bid/Ask Prices for {new_ticker}')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+mape = mean_absolute_percentage_error(y_test, predictions_test_original)
+print("\nBid error,        Ask Error")
+print(mape)
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:, 0], label='Actual Bid', color='blue')
+plt.plot(predictions_test_original[:, 0], label='Predicted Bid', color='red', linestyle='--')
+#plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+#plt.plot(predictions[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Bid Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+# Assuming y_test and predictions are 2D arrays with shape [samples, 2] (for bid and ask prices)
+actual_bid_prices = y_test[:, 0]
+predicted_bid_prices = predictions_test_original[:, 0]
+
+# Calculate absolute percentage error for bids, avoiding divide by zero
+absolute_error_bid = np.abs(actual_bid_prices - predicted_bid_prices)
+absolute_error_bid_percentage = np.where(actual_bid_prices != 0, (absolute_error_bid / actual_bid_prices) * 100, 0)
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 500, 100)
+
+# Plot a histogram of the absolute percentage errors
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_bid_percentage, bins=bins, edgecolor='k', color='blue', alpha=0.7)
+plt.title('Distributiuon of Percentage Error for Bid Prices')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+
+# Plot a bar graph of the absolute  errors for each sample
+plt.figure(figsize=(12, 6))
+plt.plot(absolute_error_bid, color='blue', alpha=0.7)
+plt.title('Absolute Error for Bid Prices (Sample-wise)')
+plt.xlabel('Sample Index')
+plt.ylabel('Absolute Error')
+plt.grid(True)
+plt.show()
+
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 200, 100)
+
+# Plot a histogram of the absolute percentage errors
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_bid_percentage, bins=bins, edgecolor='k', color='blue', alpha=0.7)
+plt.title('Distributiuon of Percentage Error for Bid Prices on AMZN data')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+
+# Plotting the predictions against actual values
+# Assuming y_test and y_pred are 2D arrays with shape [samples, 2] (for bid and ask prices)
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[:, 1], label='Actual Ask', color='green')
+plt.plot(predictions_test_original[:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title('Actual vs Predicted Ask Prices')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+# Assuming y_test and predictions are 2D arrays with shape [samples, 2] (for bid and ask prices)
+actual_ask_prices = y_test[:, 1]
+predicted_ask_prices = predictions_test_original[:, 1]
+
+
+# Calculate absolute percentage error for bids, avoiding divide by zero
+absolute_error_ask = np.abs(actual_ask_prices - predicted_ask_prices)
+absolute_error_ask_percentage = np.where(actual_ask_prices != 0, (absolute_error_ask / actual_ask_prices) * 100, 0)
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 500, 100)
+
+# Plot a histogram of the absolute percentage errors for asks
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_ask_percentage, bins=bins, edgecolor='k', color='green', alpha=0.7)
+plt.title('Histogram of Absolute Percentage Error for Ask Prices')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+# Plot a bar graph of the absolute percentage errors for each sample
+plt.figure(figsize=(12, 6))
+plt.plot(absolute_error_ask, color='green', alpha=0.7)
+plt.title('Absolute  Error for Ask Prices (Sample-wise)')
+plt.xlabel('Sample Index')
+plt.ylabel('Absolute Error')
+plt.grid(True)
+plt.show()
+
+
+# Define the range for the histogram bins (0% to 500% with 100 bins)
+bins = np.linspace(0, 200, 100)
+
+# Plot a histogram of the absolute percentage errors for asks
+plt.figure(figsize=(12, 6))
+plt.hist(absolute_error_ask_percentage, bins=bins, edgecolor='k', color='green', alpha=0.7)
+plt.title('Histogram of Absolute Percentage Error for Ask Prices on AMZN data')
+plt.xlabel('Absolute Percentage Error (%)')
+plt.ylabel('Frequency')
+plt.grid(True)
+plt.show()
+
+
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[-100:, 0], label='Real Bid', color='blue')
+plt.plot(predictions_test_original[-100:, 0], label='Predicted Bid', color='red', linestyle='--')
+plt.plot(y_test[-100:, 1], label='Real Ask', color='green')
+plt.plot(predictions_test_original[-100:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title(f'Real vs Predicted Bid/Ask Prices for {new_ticker}')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
+
+plt.figure(figsize=(12, 6))
+plt.plot(y_test[-10:, 0], label='Real Bid', color='blue')
+plt.plot(predictions_test_original[-10:, 0], label='Predicted Bid', color='red', linestyle='--')
+plt.plot(y_test[-10:, 1], label='Real Ask', color='green')
+plt.plot(predictions_test_original[-10:, 1], label='Predicted Ask', color='orange', linestyle='--')
+plt.title(f'Real vs Predicted Bid/Ask Prices for {new_ticker}')
+plt.xlabel('Sample Index')
+plt.ylabel('Price')
+plt.legend()
+plt.show()
+
