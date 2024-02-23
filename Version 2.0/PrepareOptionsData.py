@@ -127,7 +127,7 @@ def produceXYDataSets(ticker, corp, ns_back):
             if np.isnan(strike) or np.isnan(openInterest) or np.isnan(daysToExpiry) or np.isnan(deltaDays) or np.isnan(weekday) or np.isnan(stockPrices).any():
                 continue
 
-            features = np.concatenate([[strike, openInterest, daysToExpiry, deltaDays, weekday], stockPrices])
+            features = np.concatenate([[contract, strike, openInterest, daysToExpiry, deltaDays, weekday], stockPrices])
 
             # y:
             ask = data['ask'].values[iday]
