@@ -165,7 +165,7 @@ test_loss = model.evaluate(x_test, y_test)
 predictions = model.predict(x_test)
 
 # Save the model
-model.save(model_name+'_model.h5')
+model.save(model_name+'_model.keras')
 
 print(f"Test Loss: {test_loss}")
 
@@ -204,3 +204,10 @@ import numpy as np
 np.save('GRU_predictions.npy', predictions)
 np.save('GRU_x_test', x_test)
 np.save('GRU_y_test.npy', y_test)
+
+from joblib import dump
+
+# Save the scaler instances
+dump(min_max_scaler_stockdata, 'min_max_scaler_stockdata.joblib')
+dump(min_max_scaler_data, 'min_max_scaler_data.joblib')
+
