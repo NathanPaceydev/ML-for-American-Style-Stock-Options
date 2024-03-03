@@ -13,6 +13,9 @@ from sklearn.metrics import mean_squared_error
 from PrepareOptionsData import produceXYDataSets
 import warnings
 
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+
 
 tickers = ['AAPL', 'AMD']
 option_type = 'C'
@@ -154,6 +157,10 @@ model_name = 'split_options_GRU'
 model = build_gru_model(input_shape=(x_train.shape[1], x_train.shape[2]))
 
 # Train the model
+# Define callbacks
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min', restore_best_weights=True)
+model_checkpoint = ModelCheckpoint('split_options_GRU.keras', monitor='val_loss', save_best_only=True, mode='min', verbose=1)
+
 history = model.fit(x_train, y_train, epochs=10, batch_size=64, validation_split=0.2)
 
 print("\nEvaluate on the testing data:")
