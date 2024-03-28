@@ -61,7 +61,7 @@ def build_gru_model_hybrid(option_data_shape, stock_data_shape):
     # Stock data processing with GRU and normalization
     #x1_norm = LayerNormalization()(inputStockData)
     #x1 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', kernel_regularizer=l2(0.01)))(x1_norm)
-    x1 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', kernel_regularizer=l2(0.01)))(inputStockData)
+    x1 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', kernel_regularizer=l2(0.001)))(inputStockData)
     
     x1 = Dropout(0.3)(x1)  # Increased dropout
     x1 = layers.Flatten()(x1)
@@ -74,82 +74,55 @@ def build_gru_model_hybrid(option_data_shape, stock_data_shape):
     outputs = Dense(2, activation="linear")(combined)
 
     model = Model(inputs=[inputOptionData, inputStockData], outputs=outputs)
-    model.compile(optimizer=Adam(learning_rate=0.01), loss='mean_squared_error')
+    model.compile(optimizer=Adam(learning_rate=0.001), loss='mean_squared_error')
 
     return model
 
 
-# test Ryan's model
-def make_model(option_data_shape, stock_data_shape):
+
+def new_GRU_Hybrid_model(option_data_shape, stock_data_shape):
+    # Define inputs
+    inputOptionData = Input(shape=option_data_shape, name='option_input')
+    inputStockData = Input(shape=stock_data_shape, name='stock_input')
     
-    #inputCName = keras.Input(shape=(1), dtype=tf.string)
-    #inputOptionData = keras.Input(shape=(NOPTION_DATA, 1))
-    #inputStockData = keras.Input(shape=(NSTOCK_DAYS, 1))
-    
-    # Define inputs for each type of data
-    inputOptionData = Input(shape=option_data_shape, name='x_option_train_expanded')
-    inputStockData = Input(shape=stock_data_shape, name='x_stock_train')
-    
-    # X0 (the contract name, a string)
-  
-    
-    # X1
-    #Flatten the option data
-    x1 = layers.Flatten()(inputOptionData)
-    x1 = layers.Dense(32, activation="relu")(x1)
-    x1 = layers.Dense(8, activation="relu",name='option_dense_output')(x1)
-    #x1 = layers.Dropout(0.1)(x1)
+    # Option data processing
+    option_layer = layers.Flatten()(inputOptionData)
+    option_layer = layers.Dense(32, activation="relu")(option_layer)
+    option_layer = layers.Dense(8, activation="relu", name='option_dense_output')(option_layer)
         
-    # X2
-    #GRU on the stock price data
-    x2 = layers.GRU(units = 32, return_sequences = True, activation='tanh')(inputStockData)
-    x2 = layers.Dropout(0.2)(x2)
+    # GRU layers on stock data
+    stock_gru_layer = layers.GRU(32, return_sequences=True, activation='tanh')(inputStockData)
+    stock_gru_layer = layers.Dropout(0.2)(stock_gru_layer)
+    stock_gru_layer = layers.GRU(32, return_sequences=True, activation='tanh')(stock_gru_layer)
+    stock_gru_layer = layers.Dropout(0.2)(stock_gru_layer)
+    stock_gru_layer = layers.Flatten()(stock_gru_layer)
+    stock_gru_layer = layers.Dense(32, activation="relu")(stock_gru_layer)
+    stock_gru_layer = layers.Dense(8, activation="relu", name='stock_gru_output')(stock_gru_layer)
     
-    x2 = layers.GRU(units = 32, return_sequences = True, activation='tanh')(x2)
-    x2 = layers.Dropout(0.2)(x2)    
+    # Convolutional layers on stock data
+    stock_conv_layer = layers.Conv1D(32, kernel_size=1, activation="relu")(inputStockData)
+    stock_conv_layer = layers.Conv1D(32, kernel_size=3, activation="relu")(stock_conv_layer)
+    stock_conv_layer = layers.Conv1D(32, kernel_size=5, activation="relu")(stock_conv_layer)
+    stock_conv_layer = layers.MaxPooling1D(2)(stock_conv_layer)
+    stock_conv_layer = layers.Conv1D(32, kernel_size=3, activation="relu")(stock_conv_layer)
+    stock_conv_layer = layers.MaxPooling1D(2)(stock_conv_layer)
+    stock_conv_layer = layers.Flatten()(stock_conv_layer)
+    stock_conv_layer = layers.Dense(32, activation="relu")(stock_conv_layer)
+    stock_conv_layer = layers.Dense(8, activation="relu", name='stock_convo_output')(stock_conv_layer)
+    
+    # Dense layer on stock data
+    stock_dense_layer = layers.Flatten()(inputStockData)
+    stock_dense_layer = layers.Dense(32, activation="relu")(stock_dense_layer)
+    stock_dense_layer = layers.Dense(8, activation="relu", name='stock_dense_output')(stock_dense_layer)
+    
+    # Combine layers
+    combined_layer = layers.Concatenate(name='concat_output')([option_layer, stock_conv_layer, stock_dense_layer])
+    combined_layer = layers.Dense(16, activation="relu")(combined_layer)
+    outputs = layers.Dense(2, activation="linear")(combined_layer)
+    
+    # Construct the model
+    model = keras.Model(inputs=[inputOptionData, inputStockData], outputs=outputs, name='New_Hybrid_GRU_Model')
+    model.summary()
 
-    x2 = layers.GRU(units = 32, return_sequences = True, activation='tanh')(x2)
-    x2 = layers.Dropout(0.2)(x2) 
-    
-    x2 = layers.GRU(units = 32, return_sequences = True, activation='tanh')(x2)
-    x2 = layers.Dropout(0.2)(x2) 
-    
-    x2 = layers.Flatten()(x2)
-    x2 = layers.Dense(32, activation="relu")(x2)
-    x2 = layers.Dense(8, activation="relu",name='stock_gru_output')(x2)
-    #x2 = layers.Dropout(0.1)(x2)
-    
-    
-    # X3
-    #Convo layer on stock price data
-    x3 = layers.Conv1D(32, kernel_size = 1, strides=1, activation="relu")(inputStockData)
-    x3 = layers.Conv1D(32, kernel_size = 3, strides=1, activation="relu")(x3)
-    x3 = layers.Conv1D(32, kernel_size = 5, strides=1, activation="relu")(x3)
-    x3 = layers.MaxPooling1D(2)(x3)
-    x3 = layers.Conv1D(32, kernel_size = 3, strides=1, activation="relu")(x3)
-    x3 = layers.MaxPooling1D(2)(x3)
-    x3 = layers.Flatten()(x3)
-    x3 = layers.Dense(32, activation="relu")(x3)
-    x3 = layers.Dense(8, activation="relu",name='stock_convo_output')(x3)
-    #x3 = layers.Dropout(0.1)(x3)
-    
-    # X4
-    # Dense layer on the stock data
-    x4 = layers.Flatten()(inputStockData)
-    x4 = layers.Dense(32, activation="relu")(x4)
-    x4 = layers.Dense(8, activation="relu",name='stock_dense_output')(x4)
-    
-    #Combine the option and stock data
-    x = layers.Concatenate(name='concat_output')([x1, x3, x4])
-
-    x = layers.Dense(16, activation="relu")(x)
-    #x = layers.Dropout(0.1)(x) 
-    x = layers.Dense(2)(x)
-    
-    outputs = x
-    
-    model = keras.Model([inputOptionData,inputStockData], outputs, name='ryan_GRU_model')
-    #model = keras.Model(inputOptionData, outputs, name=name)
-    model.summary()   
-    
     return model
+
