@@ -51,25 +51,18 @@ def build_gru_model_hybrid(option_data_shape, stock_data_shape):
     inputStockData = Input(shape=stock_data_shape, name='x_stock_train')
 
     # Option data processing with normalization
-    #x0_norm = LayerNormalization()(inputOptionData)
-    #x0 = layers.Flatten()(x0_norm)
     x0 = layers.Flatten()(inputOptionData)
-    
     x0 = Dense(32, activation="relu")(x0)
     x0_option_dense_output = Dense(8, activation="relu", name='option_dense_output')(x0)
 
     # Stock data processing with GRU and normalization
-    #x1_norm = LayerNormalization()(inputStockData)
-    #x1 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', kernel_regularizer=l2(0.01)))(x1_norm)
     x1 = Bidirectional(GRU(32, return_sequences=True, activation='tanh', kernel_regularizer=l2(0.001)))(inputStockData)
-    
-    x1 = Dropout(0.3)(x1)  # Increased dropout
+    x1 = Dropout(0.3)(x1)
     x1 = layers.Flatten()(x1)
     x1_stock_gru_output = Dense(8, activation=LeakyReLU(alpha=0.01), name='stock_gru_output')(x1)
 
     # Combine processed inputs
     combined = Concatenate(name='concat_output')([x0_option_dense_output, x1_stock_gru_output])
-    
     combined = Dense(16, activation="relu")(combined)
     outputs = Dense(2, activation="linear")(combined)
 
